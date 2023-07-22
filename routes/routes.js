@@ -1,5 +1,8 @@
 const express = require('express')
 const checkRole = require('../middeware/checkrole')
+const userAuth = require('../middeware/userauth')
+
+const validator = require('../middeware/validator')
 
 const router = express.Router();
 const bcrypt = require('bcrypt')
@@ -7,7 +10,27 @@ const bcrypt = require('bcrypt')
 const BookModel = require('../models/book')
 const UserModel = require('../models/user')
 
-router.post('/books', checkRole(['admin']), async (req, res) => {
+router.get('/books' , async (req, res) => {
+    try{
+        let books = await BookModel.find() 
+        res.status(200).json({books: books})
+    }catch(err){
+        res.status(500).json({message: err.message})
+    }
+})
+
+
+router.get('/books/:id', async (req, res) => {
+    try{
+        let book = await BookModel.findById(req.params.id)
+        res.status(200).json(book)
+    }catch(err){
+        res.status(404).json({message: `Book With Id ${req.params.id} is not found`})
+    }
+})
+
+
+router.post('/books', userAuth,  checkRole(['admin']), validator('bookSchema') , async (req, res) => {
   
     const newBook = new BookModel({ 
         title: req.body.title,
@@ -19,22 +42,30 @@ router.post('/books', checkRole(['admin']), async (req, res) => {
 
     try{
         const saveData = await newBook.save()
-        res.status(200).json(saveData)
+        res.status(200).json({data:saveData, message: 'Hello' })
     }catch(error){
         res.status(400).json({message: error.message})
     }
 })
 
-router.get('/books/:id', async (req, res) => {
+router.put('/books/:id', userAuth, checkRole(['admin']), async (req, res) => {
+    let bookDetails = {}
+    if(req.body.title) bookDetails.title = req.body.title
+    if(req.body.author) bookDetails.author  = req.body.author
+    if(req.body.genre) bookDetails.genre = req.body.genre
+    if(req.body.price) bookDetails.price = req.body.price
+    if(req.body.stock) bookDetails.rating = req.body.stock
     try{
-        let book = await BookModel.findById(req.params.id)
-        res.status(200).json(book)
+        const updatedBook = await BookModel.findByIdAndUpdate(req.params.id,bookDetails, {returnOriginal : false})
+        if(!updatedBook) return res.status(404).json({message: 'Book not found'}) 
+        res.status(200).json({message: 'Book updated', newBook: updatedBook})
     }catch(err){
-        res.status(404).json({message: `Book With Id ${req.params.id} is not found`})
+        res.status(500).json({message: err.message})
     }
 })
 
-router.delete('/books/:id', checkRole(['admin']), async (req, res) => {
+
+router.delete('/books/:id', userAuth , checkRole(['admin']), async (req, res) => {
     try{
         let book = await BookModel.findByIdAndDelete(req.params.id)
         if(book)
@@ -46,16 +77,8 @@ router.delete('/books/:id', checkRole(['admin']), async (req, res) => {
     }
 })
 
-router.get('/books',  async (req, res) => {
-    try{
-        let books = await BookModel.find() 
-        res.status(200).json({books: books})
-    }catch(err){
-        res.status(500).json({message: err.message})
-    }
-})
 
-router.post('/auth/signup', async (req, res) => {
+router.post('/auth/signup', validator('signUpSchema'), async (req, res) => {
     try{
         const validateEmail = async (email) => {
             let user = await UserModel.findOne({email: email})
@@ -81,7 +104,7 @@ router.post('/auth/signup', async (req, res) => {
     }
 })
 
-router.post('/auth/login', async (req, res) => {
+router.post('/auth/login', validator('loginSchema') , async (req, res) => {
     try{
         console.log(req.body.email)
         let user = await UserModel.findOne({email : req.body.email})
@@ -90,11 +113,12 @@ router.post('/auth/login', async (req, res) => {
 
         let isPasswordValid = bcrypt.compareSync(req.body.password, user.password) 
         if(!isPasswordValid) return res.status(401).json({message: 'Invalid password'})
-        return res.status(200).json({message: 'Login Successfull!'})
+        return res.status(200).json({message: 'Login Successfull!', userDetails: user})
 
     }catch(error){
         return res.status(500).json({message: "User not found"})
     }
 })
+
 
 module.exports  = router

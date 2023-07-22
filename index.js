@@ -24,7 +24,12 @@ app.use(express.json())
 
 const routes = require('./routes/routes');
 
+
+
 app.use('/', routes)
+
+
+
 
 app.listen(port, () => {
     console.log(`Server Started at ${port}`)

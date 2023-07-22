@@ -9,7 +9,7 @@ const checkRole = (roles) => async (req, res, next) => {
     
         const user = await UserModel.findOne({ email: email})
     
-        !roles.includes(user.role) ? res.status(401).json("Sorry you don't have access") : next()
+        !roles.includes(user?.role) ? res.status(401).json("Sorry you don't have access") : next()
     }catch(err) {
         res.status(400).json({message: err.message})
     }

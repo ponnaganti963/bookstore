@@ -12,8 +12,15 @@ const UserModel = require('../models/user')
 
 router.get('/books' , async (req, res) => {
     try{
-        let books = await BookModel.find() 
-        res.status(200).json({books: books})
+        let query = req.query
+        
+        let books = await BookModel.find().where({
+            ...(query.title && {"title": query?.title}),
+            ...(query.genre && {"genre": query?.genre}),
+            ...(query.author && {"author": query?.author}),
+            ...(query.available && (query.available == "true" ? {"stock" : {$gt: 0}} : {"stock" : 0}))
+        })
+        res.status(200).json({books: books, query: query})
     }catch(err){
         res.status(500).json({message: err.message})
     }
@@ -54,7 +61,7 @@ router.put('/books/:id', userAuth, checkRole(['admin']), async (req, res) => {
     if(req.body.author) bookDetails.author  = req.body.author
     if(req.body.genre) bookDetails.genre = req.body.genre
     if(req.body.price) bookDetails.price = req.body.price
-    if(req.body.stock) bookDetails.rating = req.body.stock
+    if(req.body.stock) bookDetails.stock = req.body.stock
     try{
         const updatedBook = await BookModel.findByIdAndUpdate(req.params.id,bookDetails, {returnOriginal : false})
         if(!updatedBook) return res.status(404).json({message: 'Book not found'}) 

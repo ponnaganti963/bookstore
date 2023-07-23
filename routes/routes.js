@@ -120,6 +120,7 @@ router.post('/auth/login', validator('loginSchema') , async (req, res) => {
 
         let isPasswordValid = bcrypt.compareSync(req.body.password, user.password) 
         if(!isPasswordValid) return res.status(401).json({message: 'Invalid password'})
+        if(req.body.role !== user.role) return res.status(401).json({message: 'Please check the entered details again!!!'})
         return res.status(200).json({message: 'Login Successfull!', userDetails: user})
 
     }catch(error){
